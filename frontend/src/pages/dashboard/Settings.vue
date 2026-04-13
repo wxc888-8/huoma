@@ -34,6 +34,9 @@ const save = async () => {
     if (form.pwd) payload.pwd = form.pwd
     const { data } = await api.post('/user/update-profile', payload)
     if (data?.code !== 200) throw new Error(data?.msg ?? '保存失败')
+    if (data?.data?.token) {
+      auth.setToken(data.data.token)
+    }
     await auth.fetchMe()
     init()
     ElMessage.success('保存成功')
@@ -79,4 +82,3 @@ init()
     </div>
   </div>
 </template>
-

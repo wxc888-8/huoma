@@ -946,6 +946,101 @@ if ($route === 'admin/domains/system/delete' && ($method === 'POST' || $method =
     api_json(500, '删除失败');
 }
 
+if ($route === 'admin/domains/pool/list' && $method === 'GET') {
+    $admin = api_auth_admin();
+    if (!$admin) api_json(401, '未登录');
+    $type = isset($_GET['type']) ? trim($_GET['type']) : '';
+    if (!in_array($type, ['entry', 'landing'], true)) api_json(400, '参数错误');
+    $table = $type === 'entry' ? 'dwz_entry_domain' : 'dwz_landing_domain';
+    $rs = $DB->query("SELECT * FROM {$table} ORDER BY id DESC");
+    $rows = [];
+    while ($row = $DB->fetch($rs)) $rows[] = $row;
+    api_json(200, 'ok', ['rows' => $rows]);
+}
+
+if ($route === 'admin/domains/pool/save' && $method === 'POST') {
+    $admin = api_auth_admin();
+    if (!$admin) api_json(401, '未登录');
+    $input = api_read_input();
+    $type = isset($input['type']) ? trim($input['type']) : (isset($_POST['type']) ? trim($_POST['type']) : '');
+    if (!in_array($type, ['entry', 'landing'], true)) api_json(400, '参数错误');
+    $table = $type === 'entry' ? 'dwz_entry_domain' : 'dwz_landing_domain';
+    $id = isset($input['id']) ? intval($input['id']) : (isset($_POST['id']) ? intval($_POST['id']) : 0);
+    $domain = isset($input['domain']) ? trim($input['domain']) : (isset($_POST['domain']) ? trim($_POST['domain']) : '');
+    $state = isset($input['state']) ? intval($input['state']) : (isset($_POST['state']) ? intval($_POST['state']) : 1);
+    $qqsafe = isset($input['qqsafe']) ? intval($input['qqsafe']) : (isset($_POST['qqsafe']) ? intval($_POST['qqsafe']) : 1);
+    $wxsafe = isset($input['wxsafe']) ? intval($input['wxsafe']) : (isset($_POST['wxsafe']) ? intval($_POST['wxsafe']) : 1);
+    $is_paid = isset($input['is_paid']) ? intval($input['is_paid']) : (isset($_POST['is_paid']) ? intval($_POST['is_paid']) : 0);
+    $price = isset($input['price']) ? intval($input['price']) : (isset($_POST['price']) ? intval($_POST['price']) : 0);
+    $remark = isset($input['remark']) ? trim($input['remark']) : (isset($_POST['remark']) ? trim($_POST['remark']) : '');
+    if ($domain === '') api_json(400, '域名不能为空');
+    if ($id) {
+        $sql = "UPDATE {$table} SET domain='" . daddslashes($domain) . "',state='{$state}',qqsafe='{$qqsafe}',wxsafe='{$wxsafe}',is_paid='{$is_paid}',price='{$price}',remark='" . daddslashes($remark) . "' WHERE id='{$id}'";
+        if ($DB->query($sql)) api_json(200, 'ok', null);
+        api_json(500, '保存失败');
+    } else {
+        if ($DB->count("select count(id) from {$table} where domain='" . daddslashes($domain) . "'") > 0) api_json(400, '该域名已存在');
+        $sql = "INSERT INTO {$table}(domain,state,qqsafe,wxsafe,is_paid,price,remark,addtime,uid) VALUES('" . daddslashes($domain) . "','{$state}','{$qqsafe}','{$wxsafe}','{$is_paid}','{$price}','" . daddslashes($remark) . "','{$date}',0)";
+        if ($DB->query($sql)) api_json(200, 'ok', null);
+        api_json(500, '添加失败');
+    }
+}
+
+if ($route === 'admin/domains/pool/delete' && ($method === 'POST' || $method === 'DELETE')) {
+    $admin = api_auth_admin();
+    if (!$admin) api_json(401, '未登录');
+    $input = api_read_input();
+    $type = isset($input['type']) ? trim($input['type']) : (isset($_POST['type']) ? trim($_POST['type']) : '');
+    if (!in_array($type, ['entry', 'landing'], true)) api_json(400, '参数错误');
+    $table = $type === 'entry' ? 'dwz_entry_domain' : 'dwz_landing_domain';
+    $id = isset($input['id']) ? intval($input['id']) : (isset($_POST['id']) ? intval($_POST['id']) : 0);
+    if (!$id) api_json(400, '参数错误');
+    if ($DB->query("DELETE FROM {$table} WHERE id='{$id}'")) api_json(200, 'ok', null);
+    api_json(500, '删除失败');
+}
+
+if ($route === 'admin/points-packages/list' && $method === 'GET') {
+    $admin = api_auth_admin();
+    if (!$admin) api_json(401, '未登录');
+    $rs = $DB->query("SELECT * FROM dwz_points_package ORDER BY sort ASC, id ASC");
+    $rows = [];
+    while ($row = $DB->fetch($rs)) $rows[] = $row;
+    api_json(200, 'ok', ['rows' => $rows]);
+}
+
+if ($route === 'admin/points-packages/save' && $method === 'POST') {
+    $admin = api_auth_admin();
+    if (!$admin) api_json(401, '未登录');
+    $input = api_read_input();
+    $id = isset($input['id']) ? intval($input['id']) : (isset($_POST['id']) ? intval($_POST['id']) : 0);
+    $name = isset($input['name']) ? trim($input['name']) : (isset($_POST['name']) ? trim($_POST['name']) : '');
+    $points_num = isset($input['points_num']) ? intval($input['points_num']) : (isset($_POST['points_num']) ? intval($_POST['points_num']) : 0);
+    $price = isset($input['price']) ? floatval($input['price']) : (isset($_POST['price']) ? floatval($_POST['price']) : 0);
+    $status = isset($input['status']) ? intval($input['status']) : (isset($_POST['status']) ? intval($_POST['status']) : 1);
+    $sort = isset($input['sort']) ? intval($input['sort']) : (isset($_POST['sort']) ? intval($_POST['sort']) : 0);
+    $remarks = isset($input['remarks']) ? trim($input['remarks']) : (isset($_POST['remarks']) ? trim($_POST['remarks']) : '');
+    if ($name === '' || $points_num < 1 || $price < 0) api_json(400, '参数不完整');
+    if ($id) {
+        $sql = "UPDATE dwz_points_package SET name='" . daddslashes($name) . "',points_num='{$points_num}',price='{$price}',status='{$status}',sort='{$sort}',remarks='" . daddslashes($remarks) . "' WHERE id='{$id}'";
+        if ($DB->query($sql)) api_json(200, 'ok', null);
+        api_json(500, '保存失败');
+    } else {
+        $sql = "INSERT INTO dwz_points_package(name,points_num,price,status,sort,addtime,remarks) VALUES('" . daddslashes($name) . "','{$points_num}','{$price}','{$status}','{$sort}','{$date}','" . daddslashes($remarks) . "')";
+        if ($DB->query($sql)) api_json(200, 'ok', null);
+        api_json(500, '添加失败');
+    }
+}
+
+if ($route === 'admin/points-packages/delete' && ($method === 'POST' || $method === 'DELETE')) {
+    $admin = api_auth_admin();
+    if (!$admin) api_json(401, '未登录');
+    $input = api_read_input();
+    $id = isset($input['id']) ? intval($input['id']) : (isset($_POST['id']) ? intval($_POST['id']) : 0);
+    if (!$id) api_json(400, '参数错误');
+    if ($DB->query("DELETE FROM dwz_points_package WHERE id='{$id}'")) api_json(200, 'ok', null);
+    api_json(500, '删除失败');
+}
+
 if ($route === 'admin/withdraw/list' && $method === 'GET') {
     $admin = api_auth_admin();
     if (!$admin) api_json(401, '未登录');

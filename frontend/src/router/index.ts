@@ -13,12 +13,14 @@ import AdminLayout from '@/components/layouts/AdminLayout.vue'
 import AdminOverview from '@/pages/admin/AdminOverview.vue'
 import AdminUsers from '@/pages/admin/AdminUsers.vue'
 import AdminDomains from '@/pages/admin/AdminDomains.vue'
+import AdminDomainPool from '@/pages/admin/AdminDomainPool.vue'
 import AdminBlacklist from '@/pages/admin/AdminBlacklist.vue'
 import AdminWithdraw from '@/pages/admin/AdminWithdraw.vue'
+import AdminPointsPackages from '@/pages/admin/AdminPointsPackages.vue'
 import { useAdminAuthStore } from '@/stores/adminAuth'
 
 export const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/login',
@@ -90,9 +92,19 @@ export const router = createRouter({
           component: AdminDomains
         },
         {
+          path: 'domain-pool',
+          name: 'AdminDomainPool',
+          component: AdminDomainPool
+        },
+        {
           path: 'blacklist',
           name: 'AdminBlacklist',
           component: AdminBlacklist
+        },
+        {
+          path: 'packages',
+          name: 'AdminPointsPackages',
+          component: AdminPointsPackages
         },
         {
           path: 'withdraw',

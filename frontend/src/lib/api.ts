@@ -7,7 +7,8 @@ export const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
-  if (token) {
+  const existingAuth = (config.headers as any)?.Authorization ?? (config.headers as any)?.authorization
+  if (token && !existingAuth) {
     ;(config.headers as any) = config.headers ?? {}
     ;(config.headers as any).Authorization = `Bearer ${token}`
   }

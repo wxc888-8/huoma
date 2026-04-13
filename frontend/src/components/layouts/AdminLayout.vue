@@ -13,7 +13,9 @@ const menuItems = [
   { path: '/admin', label: '系统总览', icon: 'lucide:layout-dashboard' },
   { path: '/admin/users', label: '用户管理', icon: 'lucide:users' },
   { path: '/admin/domains', label: '系统域名池', icon: 'lucide:globe' },
+  { path: '/admin/domain-pool', label: '入口/落地域名', icon: 'lucide:route' },
   { path: '/admin/blacklist', label: '黑名单', icon: 'lucide:ban' },
+  { path: '/admin/packages', label: '积分套餐', icon: 'lucide:package' },
   { path: '/admin/withdraw', label: '提现审核', icon: 'lucide:hand-coins' },
 ]
 
@@ -122,4 +124,3 @@ onMounted(async () => {
   opacity: 0;
 }
 </style>
-
