@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const route = useRoute()
+const auth = useAuthStore()
 const isCollapsed = ref(false)
 
 const menuItems = [
@@ -15,9 +17,22 @@ const menuItems = [
 ]
 
 const handleLogout = () => {
-  localStorage.removeItem('token')
+  auth.clear()
   router.push('/login')
 }
+
+const points = computed(() => auth.user?.points ?? 0)
+
+onMounted(async () => {
+  if (!auth.user && auth.token) {
+    try {
+      await auth.fetchMe()
+    } catch {
+      auth.clear()
+      router.push('/login')
+    }
+  }
+})
 </script>
 
 <template>
@@ -77,7 +92,7 @@ const handleLogout = () => {
 
         <div class="flex items-center space-x-4">
           <div class="text-sm font-medium bg-blue-50 text-blue-700 px-3 py-1 rounded-full">
-            余额: <span class="font-bold">1280</span> 积分
+            余额: <span class="font-bold">{{ points }}</span> 积分
           </div>
           <div class="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white flex items-center justify-center font-bold text-sm shadow-md">
             U

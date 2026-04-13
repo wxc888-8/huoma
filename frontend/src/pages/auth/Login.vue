@@ -3,8 +3,10 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { ElMessage } from 'element-plus'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const auth = useAuthStore()
 const isLogin = ref(true)
 const loading = ref(false)
 
@@ -26,13 +28,20 @@ const handleSubmit = async () => {
   }
 
   loading.value = true
-  // Mock API call
-  setTimeout(() => {
-    loading.value = false
-    localStorage.setItem('token', 'mock_token')
-    ElMessage.success(isLogin.value ? '登录成功' : '注册成功')
+  try {
+    if (!isLogin.value) {
+      ElMessage.warning('注册接口尚未接入，请先使用已有账号登录')
+      return
+    }
+    await auth.login({ email: form.email, password: form.password })
+    ElMessage.success('登录成功')
     router.push('/dashboard')
-  }, 1000)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : '登录失败'
+    ElMessage.error(msg)
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

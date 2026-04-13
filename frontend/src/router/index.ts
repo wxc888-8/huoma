@@ -1,4 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import Login from '@/pages/auth/Login.vue'
+import DashboardLayout from '@/components/layouts/DashboardLayout.vue'
+import Overview from '@/pages/dashboard/Overview.vue'
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -6,7 +10,7 @@ export const router = createRouter({
     {
       path: '/login',
       name: 'Login',
-      component: () => import('../pages/auth/Login.vue')
+      component: Login
     },
     {
       path: '/',
@@ -14,12 +18,12 @@ export const router = createRouter({
     },
     {
       path: '/dashboard',
-      component: () => import('../components/layouts/DashboardLayout.vue'),
+      component: DashboardLayout,
       children: [
         {
           path: '',
           name: 'DashboardOverview',
-          component: () => import('../pages/dashboard/Overview.vue')
+          component: Overview
         }
       ]
     }
@@ -27,7 +31,8 @@ export const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token')
+  const auth = useAuthStore()
+  const token = auth.token || localStorage.getItem('token')
   if (to.path !== '/login' && !token) {
     next('/login')
   } else if (to.path === '/login' && token) {
