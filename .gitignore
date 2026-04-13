@@ -1,0 +1,7 @@
+config.php
+*.log
+logs/
+admin/error_log.txt
+other/alipay/log/
+install/install.lock
+**/.DS_Store

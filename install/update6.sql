@@ -1,0 +1,9 @@
+INSERT INTO `dwz_config` VALUES ('qqdomaincheck', '0');
+INSERT INTO `dwz_config` VALUES ('wxdomaincheck', '0');
+INSERT INTO `dwz_config` VALUES ('outqqdomain', '0');
+INSERT INTO `dwz_config` VALUES ('outwxdomain', '0');
+INSERT INTO `dwz_config` VALUES ('mail_recv', '');
+INSERT INTO `dwz_config` VALUES ('domainsetemail', '0');
+INSERT INTO `dwz_config` VALUES ('charge_dwz', '1');
+INSERT INTO `dwz_config` VALUES ('charge_dwz_list', 'urlcn,wurlcn');
+INSERT INTO `dwz_config` VALUES ('app_alert', '');
