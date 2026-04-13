@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import { ElCard, ElRow, ElCol } from 'element-plus'
+import { api } from '@/lib/api'
 
 const stats = ref([
-  { title: '总访问量', value: '12,849', icon: 'lucide:bar-chart-3', color: 'text-blue-500', bg: 'bg-blue-50' },
-  { title: '今日新增', value: '+342', icon: 'lucide:activity', color: 'text-green-500', bg: 'bg-green-50' },
-  { title: '活跃活码', value: '45', icon: 'lucide:qr-code', color: 'text-indigo-500', bg: 'bg-indigo-50' },
-  { title: '可用积分', value: '1,280', icon: 'lucide:coins', color: 'text-amber-500', bg: 'bg-amber-50' }
+  { title: '总链接数', value: '0', icon: 'lucide:link', color: 'text-blue-500', bg: 'bg-blue-50' },
+  { title: '总访问量', value: '0', icon: 'lucide:bar-chart-3', color: 'text-indigo-500', bg: 'bg-indigo-50' },
+  { title: '昨日IP', value: '0', icon: 'lucide:users', color: 'text-green-500', bg: 'bg-green-50' },
+  { title: '昨日PV', value: '0', icon: 'lucide:activity', color: 'text-amber-500', bg: 'bg-amber-50' }
 ])
 
 const recentActivities = ref([
@@ -15,6 +16,23 @@ const recentActivities = ref([
   { id: 2, action: '充值成功', target: '500 积分', time: '2小时前', icon: 'lucide:check-circle-2', color: 'text-green-500' },
   { id: 3, action: '删除了活码', target: '过期测试链接', time: '昨天 15:30', icon: 'lucide:trash-2', color: 'text-red-500' },
 ])
+
+const loadStats = async () => {
+  try {
+    const { data } = await api.get('/user/stats')
+    if (data?.code !== 200) return
+    const d = data?.data ?? {}
+    stats.value = [
+      { title: '总链接数', value: String(d.total_links ?? 0), icon: 'lucide:link', color: 'text-blue-500', bg: 'bg-blue-50' },
+      { title: '总访问量', value: String(d.total_views ?? 0), icon: 'lucide:bar-chart-3', color: 'text-indigo-500', bg: 'bg-indigo-50' },
+      { title: '昨日IP', value: String(d.yesterday_ips ?? 0), icon: 'lucide:users', color: 'text-green-500', bg: 'bg-green-50' },
+      { title: '昨日PV', value: String(d.yesterday_views ?? 0), icon: 'lucide:activity', color: 'text-amber-500', bg: 'bg-amber-50' }
+    ]
+  } catch {
+  }
+}
+
+onMounted(loadStats)
 </script>
 
 <template>

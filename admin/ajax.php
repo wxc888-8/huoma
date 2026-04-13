@@ -760,7 +760,13 @@ try {
             
             $mail = $qq . '@qq.com';
             $ip = real_ip();
-            $rs = $DB->query("insert into dwz_user(user,pwd,vip,addtime,qq,mail,name,img,addip) values('$user','$pwd','$vip','$date','$qq','$mail','$name','$img','$ip')");
+            $pwd_hash = password_hash($pwd, PASSWORD_DEFAULT);
+            if (!$pwd_hash) {
+                $result = array("code" => -1, "msg" => "密码加密失败");
+                exit(json_encode($result));
+            }
+            $pwd_hash = daddslashes($pwd_hash);
+            $rs = $DB->query("insert into dwz_user(user,pwd,vip,addtime,qq,mail,name,img,addip) values('$user','$pwd_hash','$vip','$date','$qq','$mail','$name','$img','$ip')");
             if ($rs) {
                 $result = array("code" => 0, "msg" => "添加成功");
                 exit(json_encode($result));
@@ -3684,6 +3690,9 @@ try {
             // 如果密码为空，使用原密码
             if(empty($pwd)){
                 $pwd = $row['pwd'];
+            } else {
+                $pwd_hash = password_hash($pwd, PASSWORD_DEFAULT);
+                if ($pwd_hash) $pwd = daddslashes($pwd_hash);
             }
             
             // 如果邮箱为空，使用原邮箱

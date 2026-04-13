@@ -281,7 +281,7 @@ if($url404!='http'){
         $pattern = daddslashes($_POST['pattern']);
         $dwz_type = daddslashes($_POST['dwz_type']);
         $mail = daddslashes(strip_tags($_POST['mail']));
-        $pwd = daddslashes(strip_tags($_POST['pwd']));
+        $pwd = strip_tags($_POST['pwd']);
         if (!empty($pwd) && !preg_match('/^[a-zA-Z0-9\_\!\@\#\$~\%\^\&\*.,]+$/', $pwd)) {
             $result = array("code" => -1, "msg" => "密码只能为英文与数字！");
             exit(json_encode($result));
@@ -298,7 +298,10 @@ if($url404!='http'){
                 exit(json_encode($result));
             }
             $DB->query("update dwz_user set qq='$qq',name='$name',pattern='$pattern',dwz_type='$dwz_type',mail='$mail' where id='$id'");
-            if (!empty($pwd)) $DB->query("update dwz_user set pwd='$pwd' where id='$id'");
+            if (!empty($pwd)) {
+                $pwd_hash = password_hash($pwd, PASSWORD_DEFAULT);
+                if ($pwd_hash) $DB->query("update dwz_user set pwd='" . daddslashes($pwd_hash) . "' where id='$id'");
+            }
             $result = array("code" => 0);
             exit(json_encode($result));
         }

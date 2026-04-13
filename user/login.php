@@ -8,9 +8,14 @@ $islogin2 = isset($_COOKIE["user_token"]) ? 1 : 0;
 if ($my == 'login') {
   if (isset($_POST['user']) && isset($_POST['pwd'])) {
     $user = daddslashes(strip_tags($_POST['user']));
-    $pwd = daddslashes(strip_tags($_POST['pwd']));
-    $res = $DB->get_row("select id,state from dwz_user where user='$user' and pwd='$pwd' limit 1");
+    $pwd = strip_tags($_POST['pwd']);
+    $res = $DB->get_row("select * from dwz_user where user='$user' limit 1");
     if ($res) {
+      if (!verify_password_value($pwd, $res['pwd'])) {
+        @header('Content-Type: text/html; charset=UTF-8');
+        exit(json_encode(array('code'=>-1,'msg'=>'用户名或密码不正确！')));
+      }
+      $res['pwd'] = maybe_upgrade_password($res['id'], $pwd, $res['pwd']);
       if ($res['state'] == 0) {
         @header('Content-Type: text/html; charset=UTF-8');
         exit(json_encode(array('code'=>-1,'msg'=>'当前账号已被封禁！')));
@@ -18,7 +23,7 @@ if ($my == 'login') {
       $id = $res['id'];
       $clientip = real_ip();
       $DB->query("update dwz_user set lasttime='$date',lastip='$clientip' where id='$id'");
-      $session = md5($user . $pwd . $password_hash);
+      $session = md5($res['user'] . $res['pwd'] . $password_hash);
       $token = authcode("{$id}\t{$session}", 'ENCODE', SYS_KEY);
       setcookie("user_token", $token, time() + 604800, '/');
       log_result('用户登录', 'id:' . $id . ',ip:' . $clientip, '登录成功');

@@ -6,8 +6,8 @@ if ($conf['is_reg'] == 0) {
 $my = (isset($_GET['my']) ? $_GET['my'] : NULL);
 if ($my == 'reg') {
   $user = daddslashes(strip_tags($_POST['user']));
-  $pwd = daddslashes(strip_tags($_POST['pwd']));
-  $pwds = daddslashes(strip_tags($_POST['pwds']));
+  $pwd = strip_tags($_POST['pwd']);
+  $pwds = strip_tags($_POST['pwds']);
   $qq = daddslashes(strip_tags($_POST['qq']));
   $invite_code = isset($_POST['invite_code']) ? daddslashes(strip_tags($_POST['invite_code'])) : '';
   
@@ -55,7 +55,12 @@ if ($my == 'reg') {
   $vip = date('Y-m-d H:i:s', strtotime("$date + $day day"));
   $mail = $qq . '@qq.com';
   $clientip = real_ip();
-  if ($id = $DB->insert("insert into dwz_user(user,pwd,addtime,vip,qq,mail,addip,name,img) values('$user','$pwd','$date','$vip','$qq','$mail','$clientip','$name','$img')")) {
+  $pwd_hash_raw = password_hash($pwd, PASSWORD_DEFAULT);
+  if (!$pwd_hash_raw) {
+    exit("<script language='javascript'>alert('注册失败：密码加密异常'); setTimeout(function(){history.go(-1)},1500);</script>");
+  }
+  $pwd_hash_sql = daddslashes($pwd_hash_raw);
+  if ($id = $DB->insert("insert into dwz_user(user,pwd,addtime,vip,qq,mail,addip,name,img) values('$user','$pwd_hash_sql','$date','$vip','$qq','$mail','$clientip','$name','$img')")) {
     $clientip = real_ip();
     $DB->query("update dwz_user set lasttime='$date',lastip='$clientip' where id='$id'");
     
@@ -77,7 +82,7 @@ if ($my == 'reg') {
     $new_invite_code = strtoupper(substr(md5($id.$user.time().rand(1000,9999)), 0, 8));
     $DB->query("INSERT INTO dwz_invite_code(uid, code, create_time, state, use_num) VALUES('$id', '$new_invite_code', '$date', 1, 0)");
     
-    $session = md5($user . $pwd . $password_hash);
+    $session = md5($user . $pwd_hash_raw . $password_hash);
     $token = authcode("{$id}\t{$session}", 'ENCODE', SYS_KEY);
     setcookie("user_token", $token, time() + 604800, '/');
     log_result('用户登录', 'id:' . $id . ',ip:' . $clientip, '登录成功');
@@ -85,7 +90,7 @@ if ($my == 'reg') {
   } else {
     // 添加调试代码，输出具体的错误信息
     $db_error = $DB->error();
-    $sql_query = "insert into dwz_user(user,pwd,addtime,vip,qq,mail,addip,name,img) values('$user','$pwd','$date','$vip','$qq','$mail','$clientip','$name','$img')";
+    $sql_query = "insert into dwz_user(user,pwd,addtime,vip,qq,mail,addip,name,img) values('$user','***','$date','$vip','$qq','$mail','$clientip','$name','$img')";
     
     // 记录错误到日志文件
     error_log("注册失败 - SQL: $sql_query - 错误: $db_error", 0);

@@ -137,6 +137,30 @@ function checkEmail($value)
         return false;
     }
 }
+
+function is_password_hashed($hash)
+{
+    if (!$hash) return false;
+    return strpos($hash, '$2y$') === 0 || strpos($hash, '$2a$') === 0 || strpos($hash, '$2b$') === 0 || strpos($hash, '$argon2i$') === 0 || strpos($hash, '$argon2id$') === 0;
+}
+
+function verify_password_value($input, $stored)
+{
+    if (is_password_hashed($stored)) return password_verify($input, $stored);
+    return hash_equals((string)$stored, (string)$input);
+}
+
+function maybe_upgrade_password($uid, $input, $stored)
+{
+    global $DB;
+    if (!$uid) return $stored;
+    if (is_password_hashed($stored)) return $stored;
+    if (!hash_equals((string)$stored, (string)$input)) return $stored;
+    $hash = password_hash($input, PASSWORD_DEFAULT);
+    if (!$hash) return $stored;
+    $DB->query("update dwz_user set pwd='" . daddslashes($hash) . "' where id='" . intval($uid) . "'");
+    return $hash;
+}
 /**
  * 取中间文本
  * @param unknown $str

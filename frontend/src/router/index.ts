@@ -3,6 +3,7 @@ import { useAuthStore } from '@/stores/auth'
 import Login from '@/pages/auth/Login.vue'
 import DashboardLayout from '@/components/layouts/DashboardLayout.vue'
 import Overview from '@/pages/dashboard/Overview.vue'
+import Links from '@/pages/dashboard/Links.vue'
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -24,6 +25,11 @@ export const router = createRouter({
           path: '',
           name: 'DashboardOverview',
           component: Overview
+        },
+        {
+          path: 'links',
+          name: 'DashboardLinks',
+          component: Links
         }
       ]
     }

