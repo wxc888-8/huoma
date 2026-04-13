@@ -13,3 +13,9 @@ api.interceptors.request.use((config) => {
   }
   return config
 })
+
+export const withAdminAuth = (token: string) => ({
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+})

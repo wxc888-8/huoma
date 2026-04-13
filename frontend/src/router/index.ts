@@ -8,6 +8,14 @@ import QRCodes from '@/pages/dashboard/QRCodes.vue'
 import Domains from '@/pages/dashboard/Domains.vue'
 import Billing from '@/pages/dashboard/Billing.vue'
 import Settings from '@/pages/dashboard/Settings.vue'
+import AdminLogin from '@/pages/admin/AdminLogin.vue'
+import AdminLayout from '@/components/layouts/AdminLayout.vue'
+import AdminOverview from '@/pages/admin/AdminOverview.vue'
+import AdminUsers from '@/pages/admin/AdminUsers.vue'
+import AdminDomains from '@/pages/admin/AdminDomains.vue'
+import AdminBlacklist from '@/pages/admin/AdminBlacklist.vue'
+import AdminWithdraw from '@/pages/admin/AdminWithdraw.vue'
+import { useAdminAuthStore } from '@/stores/adminAuth'
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -16,6 +24,11 @@ export const router = createRouter({
       path: '/login',
       name: 'Login',
       component: Login
+    },
+    {
+      path: '/admin/login',
+      name: 'AdminLogin',
+      component: AdminLogin
     },
     {
       path: '/',
@@ -56,6 +69,37 @@ export const router = createRouter({
           component: Settings
         }
       ]
+    },
+    {
+      path: '/admin',
+      component: AdminLayout,
+      children: [
+        {
+          path: '',
+          name: 'AdminOverview',
+          component: AdminOverview
+        },
+        {
+          path: 'users',
+          name: 'AdminUsers',
+          component: AdminUsers
+        },
+        {
+          path: 'domains',
+          name: 'AdminDomains',
+          component: AdminDomains
+        },
+        {
+          path: 'blacklist',
+          name: 'AdminBlacklist',
+          component: AdminBlacklist
+        },
+        {
+          path: 'withdraw',
+          name: 'AdminWithdraw',
+          component: AdminWithdraw
+        }
+      ]
     }
   ]
 })
@@ -63,6 +107,21 @@ export const router = createRouter({
 router.beforeEach((to, from, next) => {
   const auth = useAuthStore()
   const token = auth.token || localStorage.getItem('token')
+  const adminAuth = useAdminAuthStore()
+  const adminToken = adminAuth.token || localStorage.getItem('admin_token')
+  if (to.path.startsWith('/admin')) {
+    if (to.path === '/admin/login') {
+      if (adminToken) next('/admin')
+      else next()
+      return
+    }
+    if (!adminToken) {
+      next('/admin/login')
+      return
+    }
+    next()
+    return
+  }
   if (to.path !== '/login' && !token) {
     next('/login')
   } else if (to.path === '/login' && token) {

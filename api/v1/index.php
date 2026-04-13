@@ -61,6 +61,26 @@ function api_auth_user()
     return $userrow;
 }
 
+function api_auth_admin()
+{
+    global $conf, $password_hash;
+    $token = api_get_bearer_token();
+    if (!$token && isset($_COOKIE['admin_token'])) $token = daddslashes($_COOKIE['admin_token']);
+    if (!$token) return null;
+
+    $decoded = authcode(daddslashes($token), 'DECODE', SYS_KEY);
+    if (!$decoded) return null;
+
+    $parts = explode("\t", $decoded);
+    if (count($parts) < 2) return null;
+    $user = $parts[0];
+    $sid = $parts[1];
+    $session = md5($conf['admin_user'] . $conf['admin_pwd'] . $password_hash);
+    if ($user !== $conf['admin_user']) return null;
+    if ($sid !== $session) return null;
+    return ['user' => $user, '_token' => $token];
+}
+
 function api_current_path()
 {
     if (isset($_GET['r']) && $_GET['r'] !== '') return trim($_GET['r'], '/');
@@ -700,6 +720,261 @@ if ($route === 'user/update-profile' && $method === 'POST') {
         api_json(200, 'ok', ['token' => $token]);
     }
     api_json(200, 'ok', null);
+}
+
+if ($route === 'admin/login' && $method === 'POST') {
+    $input = api_read_input();
+    $user = isset($input['user']) ? $input['user'] : (isset($_POST['user']) ? $_POST['user'] : '');
+    $pass = isset($input['password']) ? $input['password'] : (isset($_POST['password']) ? $_POST['password'] : (isset($_POST['pass']) ? $_POST['pass'] : ''));
+    $user = trim($user);
+    $pass = trim($pass);
+    if ($user === '' || $pass === '') api_json(400, '请填写账号和密码');
+    if ($user !== $conf['admin_user'] || $pass !== $conf['admin_pwd']) api_json(401, '账号或密码错误');
+    $session = md5($conf['admin_user'] . $conf['admin_pwd'] . $password_hash);
+    $token = authcode("{$user}\t{$session}", 'ENCODE', SYS_KEY);
+    api_json(200, 'ok', ['token' => $token, 'admin' => ['user' => $user]]);
+}
+
+if ($route === 'admin/me' && $method === 'GET') {
+    $admin = api_auth_admin();
+    if (!$admin) api_json(401, '未登录');
+    api_json(200, 'ok', ['user' => $admin['user']]);
+}
+
+if ($route === 'admin/stats' && $method === 'GET') {
+    $admin = api_auth_admin();
+    if (!$admin) api_json(401, '未登录');
+    $count1 = $DB->count("select count(1) from dwz_user");
+    $count2 = $DB->count("select count(1) from dwz_url");
+    $count3 = $DB->count("select count(1) from dwz_pay where status=1");
+    $count4 = $DB->count("select sum(money) from dwz_pay where status=1");
+    $count5 = $DB->count("select count(1) from dwz_domain where type !=8");
+    $countQr = $DB->count("select count(1) from dwz_qrcode");
+    $countWithdraw = $DB->count("select count(1) from dwz_withdraw where status=0");
+    api_json(200, 'ok', [
+        'users' => intval($count1),
+        'urls' => intval($count2),
+        'orders_paid' => intval($count3),
+        'orders_amount' => floatval($count4 ? $count4 : 0),
+        'domains' => intval($count5),
+        'qrcodes' => intval($countQr),
+        'withdraw_pending' => intval($countWithdraw)
+    ]);
+}
+
+if ($route === 'admin/users/list' && $method === 'GET') {
+    $admin = api_auth_admin();
+    if (!$admin) api_json(401, '未登录');
+    $kw = isset($_GET['kw']) ? trim($_GET['kw']) : '';
+    $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 20;
+    if ($limit < 1) $limit = 20;
+    if ($limit > 100) $limit = 100;
+    $offset = isset($_GET['offset']) ? intval($_GET['offset']) : 0;
+    if ($offset < 0) $offset = 0;
+    $where = "1";
+    if ($kw !== '') {
+        $kw2 = daddslashes($kw);
+        $where .= " and (user like '%{$kw2}%' or mail like '%{$kw2}%' or qq like '%{$kw2}%' or name like '%{$kw2}%')";
+    }
+    $total = $DB->count("select count(*) from dwz_user where {$where}");
+    $rs = $DB->query("select * from dwz_user where {$where} order by id desc limit {$offset},{$limit}");
+    $rows = [];
+    while ($row = $DB->fetch($rs)) {
+        $rows[] = [
+            'id' => intval($row['id']),
+            'user' => $row['user'],
+            'name' => isset($row['name']) ? $row['name'] : '',
+            'mail' => isset($row['mail']) ? $row['mail'] : '',
+            'qq' => isset($row['qq']) ? $row['qq'] : '',
+            'points' => isset($row['points']) ? intval($row['points']) : 0,
+            'vip' => isset($row['vip']) ? $row['vip'] : null,
+            'state' => isset($row['state']) ? intval($row['state']) : 1,
+            'addtime' => isset($row['addtime']) ? $row['addtime'] : null,
+            'lasttime' => isset($row['lasttime']) ? $row['lasttime'] : null
+        ];
+    }
+    api_json(200, 'ok', ['total' => intval($total), 'rows' => $rows]);
+}
+
+if ($route === 'admin/users/update' && $method === 'POST') {
+    $admin = api_auth_admin();
+    if (!$admin) api_json(401, '未登录');
+    $input = api_read_input();
+    $uid = isset($input['id']) ? intval($input['id']) : (isset($_POST['id']) ? intval($_POST['id']) : 0);
+    if (!$uid) api_json(400, '参数错误');
+    $row = $DB->get_row("select * from dwz_user where id='{$uid}' limit 1");
+    if (!$row) api_json(404, '用户不存在');
+
+    $sets = [];
+    if (isset($input['state']) || isset($_POST['state'])) {
+        $state = isset($input['state']) ? intval($input['state']) : intval($_POST['state']);
+        $sets[] = "state='{$state}'";
+    }
+    if (isset($input['points']) || isset($_POST['points'])) {
+        $points = isset($input['points']) ? intval($input['points']) : intval($_POST['points']);
+        $sets[] = "points='{$points}'";
+    }
+    if (isset($input['vip']) || isset($_POST['vip'])) {
+        $vip = isset($input['vip']) ? trim($input['vip']) : trim($_POST['vip']);
+        if ($vip !== '') $sets[] = "vip='" . daddslashes($vip) . "'";
+    }
+    if (isset($input['name']) || isset($_POST['name'])) {
+        $name = isset($input['name']) ? trim($input['name']) : trim($_POST['name']);
+        $sets[] = "name='" . daddslashes($name) . "'";
+    }
+    if (isset($input['mail']) || isset($_POST['mail'])) {
+        $mail = isset($input['mail']) ? trim($input['mail']) : trim($_POST['mail']);
+        if ($mail !== '' && !checkEmail($mail)) api_json(400, '邮箱格式不正确');
+        if ($mail !== '') $sets[] = "mail='" . daddslashes($mail) . "'";
+    }
+    if (isset($input['qq']) || isset($_POST['qq'])) {
+        $qq = isset($input['qq']) ? trim($input['qq']) : trim($_POST['qq']);
+        if ($qq !== '' && !preg_match('#^[0-9]{5,11}+$#', $qq)) api_json(400, 'QQ格式不正确');
+        if ($qq !== '') $sets[] = "qq='" . daddslashes($qq) . "'";
+    }
+    if (isset($input['pwd']) || isset($_POST['pwd'])) {
+        $pwd = isset($input['pwd']) ? $input['pwd'] : $_POST['pwd'];
+        $pwd = is_string($pwd) ? trim($pwd) : '';
+        if ($pwd !== '') {
+            $hash = password_hash($pwd, PASSWORD_DEFAULT);
+            if (!$hash) api_json(500, '密码加密失败');
+            $sets[] = "pwd='" . daddslashes($hash) . "'";
+        }
+    }
+
+    if (empty($sets)) api_json(400, '没有可更新字段');
+    $sql = "update dwz_user set " . implode(',', $sets) . " where id='{$uid}'";
+    if (!$DB->query($sql)) api_json(500, '更新失败');
+    api_json(200, 'ok', null);
+}
+
+if ($route === 'admin/blacklist/list' && $method === 'GET') {
+    $admin = api_auth_admin();
+    if (!$admin) api_json(401, '未登录');
+    $type = isset($_GET['type']) ? intval($_GET['type']) : -1;
+    $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 50;
+    if ($limit < 1) $limit = 50;
+    if ($limit > 200) $limit = 200;
+    $where = "1";
+    if ($type !== -1) $where .= " and type='{$type}'";
+    $rs = $DB->query("select * from dwz_black where {$where} order by id desc limit {$limit}");
+    $rows = [];
+    while ($row = $DB->fetch($rs)) {
+        $rows[] = ['id' => intval($row['id']), 'content' => $row['content'], 'type' => intval($row['type']), 'addtime' => $row['addtime']];
+    }
+    api_json(200, 'ok', ['rows' => $rows]);
+}
+
+if ($route === 'admin/blacklist/add' && $method === 'POST') {
+    $admin = api_auth_admin();
+    if (!$admin) api_json(401, '未登录');
+    $input = api_read_input();
+    $content = isset($input['content']) ? trim($input['content']) : (isset($_POST['content']) ? trim($_POST['content']) : '');
+    $type = isset($input['type']) ? intval($input['type']) : (isset($_POST['type']) ? intval($_POST['type']) : 0);
+    if ($content === '') api_json(400, '内容不能为空');
+    if ($DB->get_row("select id from dwz_black where content='" . daddslashes($content) . "' and type='{$type}' limit 1")) api_json(400, '已存在');
+    if ($DB->query("insert into dwz_black(content,type,addtime) values('" . daddslashes($content) . "','{$type}','{$date}')")) api_json(200, 'ok', null);
+    api_json(500, '添加失败');
+}
+
+if ($route === 'admin/blacklist/delete' && ($method === 'POST' || $method === 'DELETE')) {
+    $admin = api_auth_admin();
+    if (!$admin) api_json(401, '未登录');
+    $input = api_read_input();
+    $id = isset($input['id']) ? intval($input['id']) : (isset($_POST['id']) ? intval($_POST['id']) : 0);
+    if (!$id) api_json(400, '参数错误');
+    if ($DB->query("delete from dwz_black where id='{$id}'")) api_json(200, 'ok', null);
+    api_json(500, '删除失败');
+}
+
+if ($route === 'admin/domains/system/list' && $method === 'GET') {
+    $admin = api_auth_admin();
+    if (!$admin) api_json(401, '未登录');
+    $type = isset($_GET['type']) ? intval($_GET['type']) : -1;
+    $where = "1";
+    if ($type !== -1) $where .= " and type='{$type}'";
+    $rs = $DB->query("select * from dwz_domain where {$where} order by id desc");
+    $rows = [];
+    while ($row = $DB->fetch($rs)) {
+        $rows[] = [
+            'id' => intval($row['id']),
+            'domain' => $row['domain'],
+            'type' => intval($row['type']),
+            'state' => intval($row['state']),
+            'is_https' => intval($row['is_https']),
+            'qqsafe' => intval($row['qqsafe']),
+            'wxsafe' => intval($row['wxsafe']),
+            'dysafe' => isset($row['dysafe']) ? intval($row['dysafe']) : 1,
+            'addtime' => $row['addtime']
+        ];
+    }
+    api_json(200, 'ok', ['rows' => $rows]);
+}
+
+if ($route === 'admin/domains/system/save' && $method === 'POST') {
+    $admin = api_auth_admin();
+    if (!$admin) api_json(401, '未登录');
+    $input = api_read_input();
+    $id = isset($input['id']) ? intval($input['id']) : (isset($_POST['id']) ? intval($_POST['id']) : 0);
+    $domain = isset($input['domain']) ? trim($input['domain']) : (isset($_POST['domain']) ? trim($_POST['domain']) : '');
+    $type = isset($input['type']) ? intval($input['type']) : (isset($_POST['type']) ? intval($_POST['type']) : 0);
+    $is_https = isset($input['is_https']) ? intval($input['is_https']) : (isset($_POST['is_https']) ? intval($_POST['is_https']) : 0);
+    $qqsafe = isset($input['qqsafe']) ? intval($input['qqsafe']) : (isset($_POST['qqsafe']) ? intval($_POST['qqsafe']) : 1);
+    $wxsafe = isset($input['wxsafe']) ? intval($input['wxsafe']) : (isset($_POST['wxsafe']) ? intval($_POST['wxsafe']) : 1);
+    $dysafe = isset($input['dysafe']) ? intval($input['dysafe']) : (isset($_POST['dysafe']) ? intval($_POST['dysafe']) : 1);
+    $state = isset($input['state']) ? intval($input['state']) : (isset($_POST['state']) ? intval($_POST['state']) : 1);
+    if ($domain === '') api_json(400, '域名不能为空');
+    if ($id) {
+        $sql = "update dwz_domain set domain='" . daddslashes($domain) . "',type='{$type}',is_https='{$is_https}',qqsafe='{$qqsafe}',wxsafe='{$wxsafe}',dysafe='{$dysafe}',state='{$state}' where id='{$id}'";
+        if ($DB->query($sql)) api_json(200, 'ok', null);
+        api_json(500, '保存失败');
+    } else {
+        if ($DB->count("select count(id) from dwz_domain where domain='" . daddslashes($domain) . "'") > 0) api_json(400, '该域名已存在');
+        $sql = "insert into dwz_domain(domain,type,qqsafe,wxsafe,dysafe,addtime,state,is_https) values('" . daddslashes($domain) . "','{$type}','{$qqsafe}','{$wxsafe}','{$dysafe}','{$date}','{$state}','{$is_https}')";
+        if ($DB->query($sql)) api_json(200, 'ok', null);
+        api_json(500, '添加失败');
+    }
+}
+
+if ($route === 'admin/domains/system/delete' && ($method === 'POST' || $method === 'DELETE')) {
+    $admin = api_auth_admin();
+    if (!$admin) api_json(401, '未登录');
+    $input = api_read_input();
+    $id = isset($input['id']) ? intval($input['id']) : (isset($_POST['id']) ? intval($_POST['id']) : 0);
+    if (!$id) api_json(400, '参数错误');
+    if ($DB->query("delete from dwz_domain where id='{$id}'")) api_json(200, 'ok', null);
+    api_json(500, '删除失败');
+}
+
+if ($route === 'admin/withdraw/list' && $method === 'GET') {
+    $admin = api_auth_admin();
+    if (!$admin) api_json(401, '未登录');
+    $status = isset($_GET['status']) ? intval($_GET['status']) : -1;
+    $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 50;
+    if ($limit < 1) $limit = 50;
+    if ($limit > 200) $limit = 200;
+    $where = "1";
+    if ($status !== -1) $where .= " and status='{$status}'";
+    $rs = $DB->query("SELECT w.*,u.user as username FROM dwz_withdraw w LEFT JOIN dwz_user u ON w.uid=u.id WHERE {$where} ORDER BY w.id DESC LIMIT {$limit}");
+    $rows = [];
+    while ($row = $DB->fetch($rs)) $rows[] = $row;
+    api_json(200, 'ok', ['rows' => $rows]);
+}
+
+if ($route === 'admin/withdraw/process' && $method === 'POST') {
+    $admin = api_auth_admin();
+    if (!$admin) api_json(401, '未登录');
+    $input = api_read_input();
+    $id = isset($input['id']) ? intval($input['id']) : (isset($_POST['id']) ? intval($_POST['id']) : 0);
+    $status = isset($input['status']) ? intval($input['status']) : (isset($_POST['status']) ? intval($_POST['status']) : 0);
+    $remark = isset($input['remark']) ? trim($input['remark']) : (isset($_POST['remark']) ? trim($_POST['remark']) : '');
+    if (!$id || !in_array($status, [1, 2], true)) api_json(400, '参数错误');
+    $row = $DB->get_row("SELECT * FROM dwz_withdraw WHERE id='{$id}' LIMIT 1");
+    if (!$row) api_json(404, '记录不存在');
+    if (intval($row['status']) !== 0) api_json(400, '该记录已处理');
+    $sql = "UPDATE dwz_withdraw SET status='{$status}',remark='" . daddslashes($remark) . "',process_time='{$date}' WHERE id='{$id}'";
+    if ($DB->query($sql)) api_json(200, 'ok', null);
+    api_json(500, '处理失败');
 }
 
 api_json(404, 'Not Found');
