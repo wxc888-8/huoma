@@ -17,14 +17,16 @@ if [ ! -d "$SITE_DIR/frontend/dist" ]; then
 fi
 
 # 2. 删除旧版冗余文件 (这会让系统变干净，不再需要旧版的混编代码)
-echo "[1/4] 正在清理旧版 PHP 文件与目录..."
-rm -rf "$SITE_DIR/user"
-rm -rf "$SITE_DIR/admin"
-rm -rf "$SITE_DIR/template/default"
-rm -rf "$SITE_DIR/template/index.php"
-# (注：保留 template/page 因为它是用于底层防封跳转的模板)
-# (注：保留 includes/ 和 qr.php 等核心逻辑引擎文件)
-echo "✅ 旧版文件清理完成！"
+if [ "${KEEP_OLD}" = "1" ]; then
+    echo "[1/4] 已设置 KEEP_OLD=1，跳过清理旧版目录"
+else
+    echo "[1/4] 正在清理旧版 PHP 文件与目录..."
+    rm -rf "$SITE_DIR/user"
+    rm -rf "$SITE_DIR/admin"
+    rm -rf "$SITE_DIR/template/default"
+    rm -rf "$SITE_DIR/template/index.php"
+    echo "✅ 旧版文件清理完成！"
+fi
 
 # 3. 部署前端单页应用到 /app 目录
 echo "[2/4] 正在部署前端文件到 /app 目录..."
