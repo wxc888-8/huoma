@@ -11,9 +11,11 @@ const isCollapsed = ref(false)
 
 const menuItems = [
   { path: '/dashboard', label: '总览看板', icon: 'lucide:layout-dashboard' },
-  { path: '/dashboard/links', label: '活码管理', icon: 'lucide:qr-code' },
+  { path: '/dashboard/links', label: '短链管理', icon: 'lucide:link' },
+  { path: '/dashboard/qrcodes', label: '活码管理', icon: 'lucide:qr-code' },
+  { path: '/dashboard/domains', label: '域名池', icon: 'lucide:globe' },
   { path: '/dashboard/billing', label: '充值提现', icon: 'lucide:wallet' },
-  { path: '/admin', label: '系统管理', icon: 'lucide:settings', adminOnly: true }
+  { path: '/dashboard/settings', label: '账号设置', icon: 'lucide:user-cog' }
 ]
 
 const handleLogout = () => {

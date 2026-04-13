@@ -4,6 +4,10 @@ import Login from '@/pages/auth/Login.vue'
 import DashboardLayout from '@/components/layouts/DashboardLayout.vue'
 import Overview from '@/pages/dashboard/Overview.vue'
 import Links from '@/pages/dashboard/Links.vue'
+import QRCodes from '@/pages/dashboard/QRCodes.vue'
+import Domains from '@/pages/dashboard/Domains.vue'
+import Billing from '@/pages/dashboard/Billing.vue'
+import Settings from '@/pages/dashboard/Settings.vue'
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -30,6 +34,26 @@ export const router = createRouter({
           path: 'links',
           name: 'DashboardLinks',
           component: Links
+        },
+        {
+          path: 'qrcodes',
+          name: 'DashboardQRCodes',
+          component: QRCodes
+        },
+        {
+          path: 'domains',
+          name: 'DashboardDomains',
+          component: Domains
+        },
+        {
+          path: 'billing',
+          name: 'DashboardBilling',
+          component: Billing
+        },
+        {
+          path: 'settings',
+          name: 'DashboardSettings',
+          component: Settings
         }
       ]
     }
